@@ -6,49 +6,44 @@ namespace RabbitSample
 {
     public class RabbitMqConsumer : BackgroundService
     {
-        //private readonly IMessageChannel _messageChannel;
+        private readonly ILogger<RabbitMqConsumer> _logger;
+        private readonly IMessageStore _store;
 
-        //public RabbitMqConsumer ( IMessageChannel messageChannel )
-        //{
-        //    _messageChannel=messageChannel;
-        //}
+        public RabbitMqConsumer(ILogger<RabbitMqConsumer> logger, IMessageStore store)
+        {
+            _logger = logger;
+            _store = store;
+        }
 
-        protected override async Task ExecuteAsync ( CancellationToken stoppingToken )
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             var factory = new ConnectionFactory
             {
-                HostName="localhost",
-                UserName="guest",
-                Password="guest"
+                HostName = "localhost",
+                UserName = "guest",
+                Password = "guest"
             };
 
             var connection = await factory.CreateConnectionAsync();
             var channel = await connection.CreateChannelAsync();
 
-            await channel.QueueDeclareAsync(
-                queue: "test-queue",
-                durable: false,
-                exclusive: false,   // ⚠️ حتما false
-                autoDelete: false,
-                arguments: null
-            );
-
+            await channel.QueueDeclareAsync("test-queue", false, false, false, null);
 
             var consumer = new AsyncEventingBasicConsumer(channel);
 
-            consumer.ReceivedAsync+=async ( model, ea ) =>
+            consumer.ReceivedAsync += async (sender, ea) =>
             {
-                var msg = Encoding.UTF8.GetString(ea.Body.ToArray());
+                var body = ea.Body.ToArray();
+                var json = Encoding.UTF8.GetString(body);
 
-           
-              //  await _messageChannel.Channel.Writer.WriteAsync(msg);
+    
+                _store.Add(json);
 
-                Console.WriteLine($"[RabbitMQ] RECEIVED: {msg}");
+                await Task.CompletedTask;
             };
 
-            await channel.BasicConsumeAsync("test-queue", true, consumer);
+            await channel.BasicConsumeAsync("test-queue", autoAck: true, consumer);
 
-            // نگه داشتن سرویس
             await Task.Delay(Timeout.Infinite, stoppingToken);
         }
     }

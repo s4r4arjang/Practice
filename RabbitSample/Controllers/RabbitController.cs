@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace RabbitSample.Controllers
 {
@@ -7,38 +8,30 @@ namespace RabbitSample.Controllers
     [ApiController]
     public class RabbitController : ControllerBase
     {
-        private readonly RabbitMqPublisher _publisher = new RabbitMqPublisher();
+        
+        private readonly RabbitMqPublisher _publisher;
+        private readonly IMessageStore _store;
 
-        //private readonly IMessageChannel _messageChannel;
-
-        //public RabbitController ( IMessageChannel messageChannel )
-        //{
-        //    _messageChannel=messageChannel;
-        //}
-        [HttpPost("send")]
-        public async Task<IActionResult> SendAsync ( [FromBody] string text )
+        public RabbitController(RabbitMqPublisher publisher, IMessageStore store)
         {
-           await _publisher.SendAsync(text);
-            return Ok("پیام ارسال شد");
+            _publisher = publisher;
+            _store = store;
         }
 
+        [HttpPost("send")]
+        public async Task<IActionResult> SendAsync([FromBody] object body)
+        {
+            await _publisher.SendAsync(body);
+            return Ok(new { status = "sent", body });
+        }
 
-        //[HttpGet("next")]
-        //public async Task<IActionResult> GetNextMessage ()
-        //{
-        
-        //    var msg = await _messageChannel.Channel.Reader.ReadAsync();
-        //    return Ok(msg);
-        //}
+        [HttpGet("receive")]
+        public IActionResult Receive()
+        {
+            if (_store.TryGet(out var json))
+                return Ok(JsonDocument.Parse(json));
 
-        //[HttpGet("stream")]
-        //public async IAsyncEnumerable<string> StreamMessages ()
-        //{
-           
-        //    await foreach (var msg in _messageChannel.Channel.Reader.ReadAllAsync())
-        //    {
-        //        yield return msg;
-        //    }
-        //}
+            return NotFound("هیچ پیامی دریافت نشده");
+        }
     }
 }
