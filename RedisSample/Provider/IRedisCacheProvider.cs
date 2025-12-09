@@ -1,8 +1,8 @@
-﻿namespace RedisSample.Controllers
+﻿namespace RedisSample.Provider
 {
     public interface IRedisCacheProvider : IDistributedCacheProvider
     {
-
+       
     }
 }
 
