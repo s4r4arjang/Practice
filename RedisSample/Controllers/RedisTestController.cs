@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.Mvc;
+using RedisSample.Context;
+using RedisSample.Service;
 using StackExchange.Redis;
 using System;
 using System.Text.Json;
@@ -14,7 +16,9 @@ namespace RedisSample.Controllers
     {
         private readonly IDatabase _db;
         private readonly JsonSerializerOptions _jsonOptions;
-        public RedisTestController ( IConnectionMultiplexer redis )
+        private readonly UserService _se;
+
+        public RedisTestController ( IConnectionMultiplexer redis , UserService se)
         {
             _db=redis.GetDatabase();
             _jsonOptions=new JsonSerializerOptions
@@ -22,6 +26,7 @@ namespace RedisSample.Controllers
                 PropertyNamingPolicy=JsonNamingPolicy.CamelCase,
                 WriteIndented=true
             };
+            _se = se;
         }
 
         public IConnectionMultiplexer Redis { get; }
@@ -126,6 +131,45 @@ namespace RedisSample.Controllers
             await _db.KeyDeleteAsync(key);
 
             return Ok("Deleted");
+        }
+
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetUser(int id)
+        {
+            var user = await _se.GetUserAsync(id);
+
+            if (user == null)
+                return NotFound();
+
+            return Ok(user);
+        }
+        [HttpGet("users")]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var users = await _se.GetAllUsersAsync();
+
+            if (users == null || users.Count == 0)
+                return NotFound("هیچ کاربری یافت نشد.");
+
+            return Ok(users);
+        }
+        [HttpPost]
+        public async Task<IActionResult> CreateUser(User user)
+        {
+            var created = await _se.AddUserAsync(user);
+            return Ok(created);
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteUser(int id)
+        {
+            bool removed = await _se.DeleteUserAsync(id);
+
+            if (!removed)
+                return NotFound();
+
+            return Ok(true);
         }
 
     }

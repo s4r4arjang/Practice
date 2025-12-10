@@ -1,4 +1,6 @@
-﻿namespace RedisSample.Provider
+﻿using RedisSample.Context;
+
+namespace RedisSample.Provider
 {
     public interface IRedisCacheProvider : IDistributedCacheProvider
     {
